@@ -22,29 +22,33 @@ type CheckOutSessionRequestT = {
   restaurantId: string;
 };
 
+export const getMyOrders = async (req: Request, res: Response) => {
+  res.json({ message: "working fine ook" });
+};
+
 export const stripeWebHookHandler = async (req: Request, res: Response) => {
   let event;
-  const sig = req.headers["stripe-signature"];
-  event = stripe.webhooks.constructEvent(
-    req.body,
-    sig as string,
-    stripeHookSec
-  );
   try {
-    if (event.type === "checkout.session.completed") {
-      const order = await Order.findById(event.data.object.metadata?.orderId);
-      if (!order) {
-        return res.status(404).json({ error: "Order not found" });
-      }
-      order.totalAmount = event.data.object.amount_total;
-      order.status = "paid";
-      await order.save();
-    }
-    res.status(200).send();
-  } catch (err: any) {
-    console.log(err);
-    res.status(400).send(`Webhook error: ${err.toString()}`);
+    const sig = req.headers["stripe-signature"];
+    event = stripe.webhooks.constructEvent(
+      req.body,
+      sig as string,
+      stripeHookSec
+    );
+  } catch (error: any) {
+    console.log(error);
+    return res.status(400).send(`Webhook error: ${error.message}`);
   }
+  if (event.type === "checkout.session.completed") {
+    const order = await Order.findById(event.data.object.metadata?.orderId);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    order.totalAmount = event.data.object.amount_total;
+    order.status = "paid";
+    await order.save();
+  }
+  res.status(200).send();
 };
 
 export const createCheckoutSession = async (req: Request, res: Response) => {
