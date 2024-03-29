@@ -5,15 +5,21 @@ import { v2 as cloudinary } from "cloudinary";
 import connectDb from "./connectDb";
 import myUserRoutes from "./routes/myUserRoutes";
 import myResturantRoutes from "./routes/myResturantRoutes";
+import resturantRoutes from "./routes/restaurantRoute";
+import orderRoute from "./routes/orderRoute";
 
 const port = process.env.PORT || 3030;
 const app = express();
-
-app.use(express.json());
 app.use(cors());
+
+//stripe needs to access to row data from req
+app.use("/api/order/checkout/webhook", express.raw({ type: "*/*" }));
+app.use(express.json());
 
 app.use("/api/user", myUserRoutes);
 app.use("/api/my/restu", myResturantRoutes);
+app.use("/api/restu", resturantRoutes);
+app.use("/api/order", orderRoute);
 
 app.get("/api", (req: Request, res: Response) => {
   res.status(200).json({ message: "Welcome to backend API" });
