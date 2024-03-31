@@ -23,32 +23,59 @@ type CheckOutSessionRequestT = {
 };
 
 export const getMyOrders = async (req: Request, res: Response) => {
-  res.json({ message: "working fine ook" });
+  try {
+    const orders = await Order.find({ user: req.userId }).populate(
+      "restaurant user"
+    );
+    if (!orders) {
+      return res.status(404).json({ error: "No orders found" });
+    }
+    res.status(200).json(orders);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Somthing went wrong" });
+  }
+};
+
+export const getMyRestaurantOrders = async (req: Request, res: Response) => {
+  try {
+    const myRestu = await Restaurant.findOne({ user: req.userId });
+    const orders = await Order.find({ restaurant: myRestu?._id }).populate(
+      "restaurant user"
+    );
+    if (!orders) {
+      return res.status(404).json({ error: "No orders found" });
+    }
+    res.status(200).json(orders);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ error: "Somthing went wrong" });
+  }
 };
 
 export const stripeWebHookHandler = async (req: Request, res: Response) => {
   let event;
+  const sig = req.headers["stripe-signature"];
+  event = stripe.webhooks.constructEvent(
+    req.body,
+    sig as string,
+    stripeHookSec
+  );
   try {
-    const sig = req.headers["stripe-signature"];
-    event = stripe.webhooks.constructEvent(
-      req.body,
-      sig as string,
-      stripeHookSec
-    );
-  } catch (error: any) {
-    console.log(error);
-    return res.status(400).send(`Webhook error: ${error.message}`);
-  }
-  if (event.type === "checkout.session.completed") {
-    const order = await Order.findById(event.data.object.metadata?.orderId);
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
+    if (event.type === "checkout.session.completed") {
+      const order = await Order.findById(event.data.object.metadata?.orderId);
+      if (!order) {
+        return res.status(404).json({ error: "Order not found" });
+      }
+      order.totalAmount = event.data.object.amount_total;
+      order.status = "paid";
+      await order.save();
     }
-    order.totalAmount = event.data.object.amount_total;
-    order.status = "paid";
-    await order.save();
+    res.status(200).send();
+  } catch (err: any) {
+    console.log(err);
+    res.status(500).json(`Webhook error: ${err.message}`);
   }
-  res.status(200).send();
 };
 
 export const createCheckoutSession = async (req: Request, res: Response) => {

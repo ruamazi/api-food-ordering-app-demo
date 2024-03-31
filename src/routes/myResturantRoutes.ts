@@ -1,8 +1,9 @@
 import { Router } from "express";
 import {
   createRestu,
-  deleteRestu,
   getMyRestu,
+  getRestaurantOrders,
+  updateOrderStatus,
   updateRestu,
 } from "../controllers/myRestuController";
 import multer from "multer";
@@ -36,6 +37,8 @@ router.put(
   jwtParse,
   updateRestu
 );
-router.delete("/", deleteRestu);
+
+router.get("/orders", jwtCheck, jwtParse, getRestaurantOrders);
+router.patch("/orders/:orderId/status", jwtCheck, jwtParse, updateOrderStatus);
 
 export default router;
